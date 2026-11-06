@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>双人约会规划</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; overflow-x: hidden; }
+
+.screen { display: none; min-height: 100vh; padding: 20px; align-items: center; justify-content: center; flex-direction: column; }
+.screen.active { display: flex; }
+
+.card { background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px 25px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+
+h1 { font-size: 24px; color: #333; margin-bottom: 10px; text-align: center; }
+h2 { font-size: 20px; color: #333; margin-bottom: 15px; }
+p { color: #666; line-height: 1.6; margin-bottom: 15px; }
+
+.btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); margin-top: 15px; transition: transform 0.1s; touch-action: manipulation; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-option { background: #f8f8f8; color: #333; text-align: left; padding: 14px 16px; margin-bottom: 10px; border-radius: 10px; border: 2px solid transparent; touch-action: manipulation; }
+.btn-option.selected { border-color: #667eea; background: #f0ecff; }
+
+input, textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; margin-bottom: 10px; -webkit-appearance: none; }
+textarea { min-height: 80px; resize: vertical; }
+
+.progress { width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; margin-bottom: 20px; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 0.3s; width: 0%; }
+
+.tag { display: inline-block; background: #f0ecff; color: #667eea; padding: 4px 12px; border-radius: 20px; font-size: 13px; margin: 3px; }
+
+.result-item { background: #f8f8f8; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
+.result-item h3 { font-size: 15px; color: #667eea; margin-bottom: 5px; }
+.result-item .place { font-weight: 600; color: #333; }
+.result-item .reason { font-size: 14px; color: #666; margin-top: 5px; }
+
+.stars { font-size: 28px; text-align: center; margin: 15px 0; }
+.stars span { cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); padding: 0 5px; touch-action: manipulation; }
+
+.option-group { margin-bottom: 5px; }
+.option-label { font-size: 13px; color: #999; margin-top: 15px; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<div id="errBox" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#e74c3c; color:white; font-size:12px; padding:10px; z-index:9999; white-space:pre-wrap;"></div>
+
+<div class="screen active" id="screen1">
+  <div class="card">
+    <h1>💕 双人约会规划</h1>
+    <p style="text-align:center; margin: 15px 0;">AI 帮你策划一场让彼此心动的约会</p>
+    <p style="font-size:14px; color:#999; text-align:center;">基于双人对话 · 情感场景匹配 · 专属路线生成</p>
+    <button type="button" class="btn btn-primary" id="btnStart">开始规划我的约会</button>
+    <p style="font-size:12px; color:#bbb; text-align:center; margin-top:20px;">全程约 3 分钟 · 你的数据仅用于本次方案</p>
+  </div>
+</div>
+
+<div class="screen" id="screen2">
+  <div class="card">
+    <h2>🔑 创建会话</h2>
+    <p style="font-size:14px;">生成一个 6 位码，发给 TA 一起参与</p>
+    <button type="button" class="btn btn-primary" id="btnCreateCode" style="margin-bottom:10px;">生成我的会话码</button>
+    <div id="codeDisplay" style="display:none; text-align:center; padding:20px; background:#f0ecff; border-radius:12px; margin-bottom:15px;">
+      <p style="font-size:13px; color:#999;">你的会话码</p>
+      <p id="codeText" style="font-size:36px; font-weight:bold; color:#667eea; letter-spacing:8px;">------</p>
+      <p style="font-size:12px; color:#999; margin-top:10px;">把这组数字发给 TA，TA 输入后即可加入</p>
+    </div>
+    <p style="font-size:13px; color:#999; text-align:center; margin:15px 0;">—— 或 ——</p>
+    <p style="font-size:14px;">输入 TA 的会话码加入：</p>
+    <input type="text" id="inputCode" placeholder="输入6位码" maxlength="6" style="text-align:center; font-size:20px; letter-spacing:5px;">
+    <button type="button" class="btn btn-secondary" id="btnJoinCode">加入 TA 的会话</button>
+    <p style="font-size:11px; color:#ccc; text-align:center; margin-top:15px;">演示模式：点击下方直接开始对话</p>
+    <button type="button" class="btn btn-primary" id="btnSkipToChat" style="background:#999;">跳过，直接开始（演示）</button>
+  </div>
+</div>
+
+<div class="screen" id="screen3">
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span class="tag" id="chatRole">用户 A</span>
+      <span style="font-size:12px; color:#999;">第 <span id="qNum">1</span>/8 题</span>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <h2 id="qTitle">问题加载中...</h2>
+    <p id="qDesc" style="font-size:14px; color:#999; margin-bottom:15px;"></p>
+    <div id="qOptions"></div>
+    <textarea id="qInput" style="display:none;" placeholder="写下你的想法..."></textarea>
+    <button type="button" class="btn btn-primary" id="btnNext" style="display:none;">下一题</button>
+  </div>
+</div>
+
+<div class="screen" id="screen4">
+  <div class="card" style="text-align:center;">
+    <div style="font-size:60px; margin-bottom:20px;">⏳</div>
+    <h2>等待 TA 完成回答</h2>
+    <p>TA 正在回答第 <span id="partnerQ">3</span>/8 题...</p>
+    <div class="progress" style="margin-top:20px;"><div class="progress-bar" id="partnerProgress" style="width:37%;"></div></div>
+    <p style="font-size:13px; color:#999; margin-top:20px;">演示模式：点击下方按钮模拟 TA 完成</p>
+    <button type="button" class="btn btn-primary" id="btnPartnerDone">TA 已完成（演示）</button>
+  </div>
+</div>
+
+<div class="screen" id="screen5">
+  <div class="card">
+    <h2>📊 需求合并中</h2>
+    <div id="mergeResult"></div>
+    <button type="button" class="btn btn-primary" id="btnGenPlan">生成约会方案</button>
+  </div>
+</div>
+
+<div class="screen" id="screen6">
+  <div class="card" style="text-align:center;">
+    <div style="font-size:50px; margin-bottom:20px;">✨</div>
+    <h2>AI 正在为你定制...</h2>
+    <div id="genSteps" style="text-align:left; margin-top:20px;">
+      <p id="step1" style="color:#ccc;">⏳ 分析双人偏好...</p>
+      <p id="step2" style="color:#ccc;">⏳ 构建叙事骨架...</p>
+      <p id="step3" style="color:#ccc;">⏳ 搜索附近地点...</p>
+      <p id="step4" style="color:#ccc;">⏳ 优化路线连贯性...</p>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen7">
+  <div class="card" style="max-height:90vh; overflow-y:auto;">
+    <h2 style="text-align:center;">🎉 你的专属约会方案</h2>
+    <p style="text-align:center; font-size:14px; color:#667eea; margin-bottom:20px;" id="planTheme"></p>
+    <div id="planContent"></div>
+    <div style="background:#fff3cd; border-radius:10px; padding:12px; margin:15px 0; font-size:13px; color:#856404;">
+      🌧️ <strong>备选方案：</strong>下雨则主环节改为"沉浸式剧场·非恐"
+    </div>
+    <div style="background:#f0ecff; border-radius:10px; padding:12px; margin:15px 0; font-size:13px; color:#667eea;">
+      💌 <strong>彩蛋：</strong><span id="planEaster"></span>
+    </div>
+    <div style="text-align:center; font-size:14px; color:#999; margin:10px 0;">
+      💰 预估总花费：约 <strong>240元</strong>（两人合计）
+    </div>
+    <button type="button" class="btn btn-primary" id="btnFeedback">完成，去评价</button>
+  </div>
+</div>
+
+<div class="screen" id="screen8">
+  <div class="card" style="text-align:center;">
+    <div style="font-size:50px; margin-bottom:15px;">⭐</div>
+    <h2>约会结束后，评价一下？</h2>
+    <p style="font-size:14px; color:#999;">你的反馈会让下次方案更精准</p>
+    <div class="stars" id="starRating">
+      <span data-v="1">☆</span><span data-v="2">☆</span><span data-v="3">☆</span><span data-v="4">☆</span><span data-v="5">☆</span>
+    </div>
+    <textarea id="feedbackText" placeholder="哪个环节最好？下次想要什么感觉？"></textarea>
+    <button type="button" class="btn btn-primary" id="btnSubmitFeedback">提交反馈</button>
+  </div>
+</div>
+
+<script>
+window.onerror = function(msg, url, line, col, err) {
+  var box = document.getElementById('errBox');
+  if (box) { box.style.display = 'block'; box.textContent = '⚠️ ' + msg + ' (行' + line + ')'; }
+  return true;
+};
+window.addEventListener('unhandledrejection', function(e){
+  var box = document.getElementById('errBox');
+  if (box) { box.style.display='block'; box.textContent = '⚠️ ' + e.reason; }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  function $(id){ return document.getElementById(id); }
+
+  var questions = [
+    { title: '你们今天是什么关系阶段？', desc: '帮我们判断约会的亲密度和节奏', type: 'single', options: ['暧昧试探', '刚在一起', '稳定交往', '冷战修复', '纪念日'] },
+    { title: '今天这次约会，你最想要的感觉是什么？', desc: '选1-2个最贴合的', type: 'multi', options: ['放松不尴尬', '心跳加速', '被照顾', '一起完成一件事', '安静聊天'] },
+    { title: '你今天的状态怎么样？', desc: '精力、预算、时间', type: 'combo', options: ['满血（精力充沛）', '还行（正常状态）', '有点累（想轻松点）'], extra: 'budget', extraLabel: '💰 预算范围', extraOptions: ['AA各50-100元', 'AA各100-150元', '一方请客（不限）'], extra2: 'time', extra2Label: '⏰ 可用时间', extra2Options: ['半天（3-4小时）', '一天（6-8小时）', '晚上（2-3小时）'] },
+    { title: '有什么绝对不想碰的？', desc: '雷区全选，我们会全部避开', type: 'multi', options: ['不吃辣', '不想走路超30分钟', '怕吵', '不想太贵', '不想被认出来', '不接受户外'] },
+    { title: '你们之前一起做过什么？哪次最开心？', desc: '自由说说，我们从中提取偏好线索', type: 'text' },
+    { title: '如果今天结束后，对方说"今天真好"，你觉得是因为什么？', desc: '这帮我们定义成功标准', type: 'text' },
+    { title: '你愿意为这次约会做一点点准备吗？', desc: '比如穿什么、提前看什么', type: 'single', options: ['愿意穿好看一点', '愿意提前了解地点', '愿意准备一个小惊喜', '随意就好'] },
+    { title: '最后，你有什么想对对方说的？', desc: '可选，我们会作为彩蛋嵌入方案', type: 'text' }
+  ];
+
+  var currentQ = 0;
+  var answers = {};
+  var selectedOptions = [];
+
+  function showScreen(n) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
+    var target = $('screen' + n);
+    if (target) { target.classList.add('active'); window.scrollTo(0, 0); }
+  }
+
+  function renderQuestion() {
+    var q = questions[currentQ];
+    $('qNum').textContent = currentQ + 1;
+    $('qTitle').textContent = q.title;
+    $('qDesc').textContent = q.desc || '';
+    $('progressBar').style.width = ((currentQ) / questions.length * 100) + '%';
+
+    var container = $('qOptions');
+    container.innerHTML = '';
+    $('qInput').style.display = 'none';
+    $('btnNext').style.display = 'none';
+    selectedOptions = [];
+
+    if (q.type === 'text') {
+      $('qInput').style.display = 'block';
+      $('qInput').value = '';
+      $('btnNext').style.display = 'block';
+      $('btnNext').textContent = (currentQ === questions.length - 1) ? '完成' : '下一题';
+    } else if (q.type === 'single') {
+      for (var i = 0; i < q.options.length; i++) {
+        (function(opt) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-option';
+          btn.textContent = opt;
+          btn.addEventListener('click', function() {
+            var siblings = container.querySelectorAll('.btn-option');
+            for (var j = 0; j < siblings.length; j++) { siblings[j].classList.remove('selected'); }
+            btn.classList.add('selected');
+            selectedOptions = [opt];
+            $('btnNext').style.display = 'block';
+          });
+          container.appendChild(btn);
+        })(q.options[i]);
+      }
+      $('btnNext').textContent = (currentQ === questions.length - 1) ? '完成' : '下一题';
+    } else if (q.type === 'multi') {
+      for (var i = 0; i < q.options.length; i++) {
+        (function(opt) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-option';
+          btn.textContent = opt;
+          btn.addEventListener('click', function() {
+            btn.classList.toggle('selected');
+            if (btn.classList.contains('selected')) {
+              selectedOptions.push(opt);
+            } else {
+              for (var k = 0; k < selectedOptions.length; k++) {
+                if (selectedOptions[k] === opt) { selectedOptions.splice(k, 1); break; }
+              }
+            }
+            $('btnNext').style.display = selectedOptions.length > 0 ? 'block' : 'none';
+          });
+          container.appendChild(btn);
+        })(q.options[i]);
+      }
+      $('btnNext').textContent = (currentQ === questions.length - 1) ? '完成' : '下一题';
+    } else if (q.type === 'combo') {
+      // 主选项组
+      var mainGroup = document.createElement('div');
+      mainGroup.className = 'option-group';
+      for (var i = 0; i < q.options.length; i++) {
+        (function(opt) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-option';
+          btn.textContent = opt;
+          btn.addEventListener('click', function() {
+            var btns = mainGroup.querySelectorAll('.btn-option');
+            for (var j = 0; j < btns.length; j++) { btns[j].classList.remove('selected'); }
+            btn.classList.add('selected');
+            // 移除旧的主选项
+            for (var k = selectedOptions.length - 1; k >= 0; k--) {
+              for (var m = 0; m < q.options.length; m++) {
+                if (selectedOptions[k] === q.options[m]) { selectedOptions.splice(k, 1); break; }
+              }
+            }
+            selectedOptions.push(opt);
+            checkCombo();
+          });
+          mainGroup.appendChild(btn);
+        })(q.options[i]);
+      }
+      container.appendChild(mainGroup);
+
+      // 额外选项组1
+      if (q.extra) {
+        var label1 = document.createElement('p');
+        label1.className = 'option-label';
+        label1.textContent = q.extraLabel;
+        container.appendChild(label1);
+        var extraGroup1 = document.createElement('div');
+        extraGroup1.className = 'option-group';
+        for (var i = 0; i < q.extraOptions.length; i++) {
+          (function(opt) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-option';
+            btn.style.fontSize = '14px';
+            btn.textContent = opt;
+            btn.addEventListener('click', function() {
+              var btns = extraGroup1.querySelectorAll('.btn-option');
+              for (var j = 0; j < btns.length; j++) { btns[j].classList.remove('selected'); }
+              btn.classList.add('selected');
+              for (var k = selectedOptions.length - 1; k >= 0; k--) {
+                for (var m = 0; m < q.extraOptions.length; m++) {
+                  if (selectedOptions[k] === q.extraOptions[m]) { selectedOptions.splice(k, 1); break; }
+                }
+              }
+              selectedOptions.push(opt);
+              checkCombo();
+            });
+            extraGroup1.appendChild(btn);
+          })(q.extraOptions[i]);
+        }
+        container.appendChild(extraGroup1);
+      }
+
+      // 额外选项组2
+      if (q.extra2) {
+        var label2 = document.createElement('p');
+        label2.className = 'option-label';
+        label2.textContent = q.extra2Label;
+        container.appendChild(label2);
+        var extraGroup2 = document.createElement('div');
+        extraGroup2.className = 'option-group';
+        for (var i = 0; i < q.extra2Options.length; i++) {
+          (function(opt) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-option';
+            btn.style.fontSize = '14px';
+            btn.textContent = opt;
+            btn.addEventListener('click', function() {
+              var btns = extraGroup2.querySelectorAll('.btn-option');
+              for (var j = 0; j < btns.length; j++) { btns[j].classList.remove('selected'); }
+              btn.classList.add('selected');
+              for (var k = selectedOptions.length - 1; k >= 0; k--) {
+                for (var m = 0; m < q.extra2Options.length; m++) {
+                  if (selectedOptions[k] === q.extra2Options[m]) { selectedOptions.splice(k, 1); break; }
+                }
+              }
+              selectedOptions.push(opt);
+              checkCombo();
+            });
+            extraGroup2.appendChild(btn);
+          })(q.extra2Options[i]);
+        }
+        container.appendChild(extraGroup2);
+      }
+
+      function checkCombo() {
+        var hasMain = false;
+        for (var i = 0; i < selectedOptions.length; i++) {
+          for (var j = 0; j < q.options.length; j++) {
+            if (selectedOptions[i] === q.options[j]) { hasMain = true; break; }
+          }
+        }
+        $('btnNext').style.display = hasMain ? 'block' : 'none';
+      }
+      $('btnNext').textContent = (currentQ === questions.length - 1) ? '完成' : '下一题';
+    }
+  }
+
+  function saveAnswer() {
+    var q = questions[currentQ];
+    if (q.type === 'text') {
+      answers['q' + currentQ] = $('qInput').value || '(未填写)';
+    } else {
+      answers['q' + currentQ] = selectedOptions.slice();
+    }
+  }
+
+  function generateMerge() {
+    var html = '';
+    html += '<div style="margin-bottom:15px;"><span class="tag">关系：暧昧试探</span> <span class="tag">情绪：放松不尴尬</span></div>';
+    html += '<div style="background:#f8f8f8; border-radius:10px; padding:15px; margin-bottom:10px; font-size:14px;">';
+    html += '<p style="margin-bottom:8px;"><strong>✅ 情绪基调：</strong>取交集 → 放松不尴尬（A+B共识）</p>';
+    html += '<p style="margin-bottom:8px;"><strong>✅ 预算：</strong>取较低值 → AA各100-150元</p>';
+    html += '<p style="margin-bottom:8px;"><strong>✅ 时间：</strong>取交集 → 下午2点-晚上8点</p>';
+    html += '<p style="margin-bottom:8px;"><strong>🚫 雷区并集：</strong>不吃辣、不走超30分钟、怕吵（全部避开）</p>';
+    html += '<p><strong>🎯 冲突检测：</strong>无严重冲突，叙事主题「一场让时间变慢的下午」</p>';
+    html += '</div>';
+    $('mergeResult').innerHTML = html;
+  }
+
+  function generatePlan() {
+    $('planTheme').textContent = '🎯 为你们定制：暧昧试探 + 放松不尴尬';
+    var content = '';
+    var plan = [
+      { stage: '开场', name: '在书里找彼此', place: '1200bookshop（体育东店）', score: '4.6', price: '45', why: '用书缓解暧昧期的尴尬，自然产生话题', task: '各自挑一本"像对方的书"，交换读扉页' },
+      { stage: '主环节', name: '一起做一件小事', place: '陶源工坊（天河城附近）', score: '4.8', price: '120/两人', why: '合作类活动创造共同记忆，比干聊更容易拉近距离', task: '一起做一个杯子，刻上今天的日期', note: '⚠️ 需提前1天预约' },
+      { stage: '转折', name: '换个场景喘口气', place: '猫的天空之城（天环广场）', score: '4.5', price: '35', why: '从专注状态切换到轻松，给情绪一个缓冲', task: '给未来的对方写一张明信片' },
+      { stage: '收尾', name: '天黑前的告别', place: '珠江新城临江大道', score: '-', price: '免费', why: '在氛围最好的时候结束，留期待感', task: '在江边拍一张合照' }
+    ];
+    for (var i = 0; i < plan.length; i++) {
+      var p = plan[i];
+      content += '<div class="result-item">';
+      content += '<h3>' + p.stage + ' · ' + p.name + '</h3>';
+      content += '<p class="place">📍 ' + p.place + ' <span style="font-size:12px;color:#999;">评分' + p.score + ' · 人均¥' + p.price + '</span></p>';
+      content += '<p class="reason">💡 ' + p.why + '</p>';
+      content += '<p class="reason">🎯 ' + p.task + '</p>';
+      if (p.note) content += '<p style="font-size:12px;color:#e74c3c;margin-top:5px;">' + p.note + '</p>';
+      content += '</div>';
+    }
+    $('planContent').innerHTML = content;
+    $('planEaster').textContent = '其实我有点紧张 💌';
+  }
+
+  // 绑定事件
+  var btnStart = $('btnStart');
+  if (btnStart) btnStart.addEventListener('click', function() { showScreen(2); });
+
+  var btnCreateCode = $('btnCreateCode');
+  if (btnCreateCode) btnCreateCode.addEventListener('click', function() {
+    var code = Math.floor(100000 + Math.random() * 900000);
+    $('codeText').textContent = code;
+    $('codeDisplay').style.display = 'block';
+  });
+
+  var btnSkipToChat = $('btnSkipToChat');
+  if (btnSkipToChat) btnSkipToChat.addEventListener('click', function() {
+    currentQ = 0;
+    renderQuestion();
+    showScreen(3);
+  });
+
+  var btnJoinCode = $('btnJoinCode');
+  if (btnJoinCode) btnJoinCode.addEventListener('click', function() {
+    var code = $('inputCode').value;
+    if (code.length === 6) {
+      currentQ = 0;
+      renderQuestion();
+      showScreen(3);
+    } else { alert('请输入6位会话码'); }
+  });
+
+  var btnNext = $('btnNext');
+  if (btnNext) btnNext.addEventListener('click', function() {
+    saveAnswer();
+    currentQ++;
+    if (currentQ < questions.length) {
+      renderQuestion();
+    } else {
+      $('partnerProgress').style.width = '100%';
+      $('partnerQ').textContent = '8';
+      showScreen(4);
+    }
+  });
+
+  var btnPartnerDone = $('btnPartnerDone');
+  if (btnPartnerDone) btnPartnerDone.addEventListener('click', function() {
+    generateMerge();
+    showScreen(5);
+  });
+
+  var btnGenPlan = $('btnGenPlan');
+  if (btnGenPlan) btnGenPlan.addEventListener('click', function() {
+    showScreen(6);
+    setTimeout(function() { $('step1').innerHTML = '✅ 分析双人偏好完成'; }, 800);
+    setTimeout(function() { $('step2').innerHTML = '✅ 构建叙事骨架完成'; }, 1600);
+    setTimeout(function() { $('step3').innerHTML = '✅ 搜索附近地点完成'; }, 2400);
+    setTimeout(function() { $('step4').innerHTML = '✅ 优化路线连贯性完成'; generatePlan(); showScreen(7); }, 3200);
+  });
+
+  var btnFeedback = $('btnFeedback');
+  if (btnFeedback) btnFeedback.addEventListener('click', function() { showScreen(8); });
+
+  var stars = document.querySelectorAll('#starRating span');
+  for (var i = 0; i < stars.length; i++) {
+    (function(s) {
+      s.addEventListener('click', function() {
+        var v = parseInt(s.getAttribute('data-v'));
+        for (var j = 0; j < stars.length; j++) {
+          stars[j].textContent = (j < v) ? '★' : '☆';
+          stars[j].style.color = (j < v) ? '#f39c12' : '#ccc';
+        }
+      });
+    })(stars[i]);
+  }
+
+  var btnSubmitFeedback = $('btnSubmitFeedback');
+  if (btnSubmitFeedback) btnSubmitFeedback.addEventListener('click', function() {
+    alert('🎉 感谢反馈！下次方案会更精准～');
+    showScreen(1);
+    currentQ = 0;
+  });
+});
+</script>
+</body>
+</html>
